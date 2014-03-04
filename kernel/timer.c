@@ -29,6 +29,9 @@
 #  include "cycle.h"
 #endif
 
+/* MRJ TODO guard this so it only builds when I want my special printouts */
+#include <stdio.h>
+
 #ifndef FFTW_TIME_LIMIT
 #define FFTW_TIME_LIMIT 2.0  /* don't run for more than two seconds */
 #endif
@@ -173,7 +176,13 @@ typedef crude_time ticks;
 	    }
 
 	    if (tmin >= TIME_MIN) {
+		 /* MRJ 20130304 Added everything except X(plan_awake) and return lines */
+		 D("%P, ", p);
+		 printer *pr = X(mkprinter_file)(stderr);
+		 pln->adt->print(pln, pr);
+		 X(printer_destroy)(pr);
 		 X(plan_awake)(pln, SLEEPY);
+		 fprintf(stderr, ", %f\n", tmin / (double)iter);
 		 return tmin / (double) iter;
 	    }
        }

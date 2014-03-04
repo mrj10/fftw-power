@@ -20,7 +20,9 @@
 
 #include "ifftw.h"
 
-#ifdef FFTW_DEBUG
+/* MRJ defining these functions even if !FFTW_DEBUG so I can use them in the RAPL code */
+/* #ifdef FFTW_DEBUG */
+
 #include <stdio.h>
 
 typedef struct {
@@ -50,4 +52,6 @@ void X(debug)(const char *format, ...)
      va_end(ap);
      X(printer_destroy)(p);
 }
-#endif
+
+/* MRJ see above */
+/* #endif */
