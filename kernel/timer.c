@@ -34,7 +34,13 @@
 #include "exynos_5410_gpio.h"
 static unsigned int gpio_regval;
 static int gpio_regval_init = 0;
-
+/* MRJ TODO this stuff really needs to be in the library somewhere */
+#define EXYNOS_5410_GPIO_REG_BASE_ADDR 0x13400000
+// For a given bank of GPIOs, the registers are laid out in memory as: CON DATA UPD DRIVESTR
+#define EXYNOS_GPIO_CON_REG_OFFSET 0 //CON (data direction) register
+#define EXYNOS_GPIO_DATA_REG_OFFSET 4 // Data register
+#define EXYNOS_GPIO_UPD_REG_OFFSET 8 //UPD (pullup/pulldown) register
+#define EXYNOS_GPIO_DRIVE_STRENGTH_REG_OFFSET 12 //Drive strength register
 
 #ifndef FFTW_TIME_LIMIT
 #define FFTW_TIME_LIMIT 2.0  /* don't run for more than two seconds */
