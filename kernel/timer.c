@@ -201,11 +201,13 @@ typedef crude_time ticks;
   		    first = 0;
 
           /* do not run for too long */
-  		    if (X(elapsed_since)(plnr, p, begin) > FFTW_TIME_LIMIT)
+  		    if (X(elapsed_since)(plnr, p, begin) > FFTW_TIME_LIMIT) {
+            ++repeat; /* MRJ increment by one so we can print the correct number of times we executed this */
   		      break;
+          }
   	    }
 
-        fprintf(stderr, ", %d, %d", repeat+1, iter);
+        fprintf(stderr, ", %d, %d", repeat, iter);
   	    if (tmin >= TIME_MIN) {
   		    X(plan_awake)(pln, SLEEPY);
           /* MRJ Want to print the number of times we ran the plan (repeat) to know how to postprocess the tag/power data */
