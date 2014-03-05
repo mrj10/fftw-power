@@ -171,6 +171,12 @@ typedef crude_time ticks;
       gpio_regval_init = 1;
     }
 
+    /* MRJ print out problem and plan for beginning of line */
+    D("%P, ", p);
+    printer *pr = X(mkprinter_file)(stderr);
+    pln->adt->print(pln, pr);
+    X(printer_destroy)(pr);
+
     X(plan_awake)(pln, AWAKE_ZERO);
     p->adt->zero(p);
 
