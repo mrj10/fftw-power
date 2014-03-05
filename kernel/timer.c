@@ -31,6 +31,10 @@
 
 /* MRJ TODO guard this so it only builds when I want my special printouts */
 #include <stdio.h>
+#include "exynos_5410_gpio.h"
+static unsigned int gpio_regval;
+static int gpio_regval_init = 0;
+
 
 #ifndef FFTW_TIME_LIMIT
 #define FFTW_TIME_LIMIT 2.0  /* don't run for more than two seconds */
@@ -133,60 +137,68 @@ typedef crude_time ticks;
   {
        ticks t0, t1;
        int i;
-
+       /* MRJ Write 1 to GPIO 27 */
+       exynos_5410_gpio_write_raw_reg(0x0C60 + EXYNOS_GPIO_DATA_REG_OFFSET, gpio_regval | (1U << 1));
        t0 = getticks();
        for (i = 0; i < iter; ++i) 
 	    pln->adt->solve(pln, p);
        t1 = getticks();
+       /* MRJ Write 0 to GPIO 27 */
+       exynos_5410_gpio_write_raw_reg(0x0C60 + EXYNOS_GPIO_DATA_REG_OFFSET, gpio_regval | (0U << 1));
        return elapsed(t1, t0);
   }
-
 
   double X(measure_execution_time)(const planner *plnr, 
 				   plan *pln, const problem *p)
   {
-       int iter;
-       int repeat;
+    int iter;
+    int repeat;
 
-       X(plan_awake)(pln, AWAKE_ZERO);
-       p->adt->zero(p);
+    /* MRJ This will run the first time this function is called to put the GPIO in a consistent state */
+    if(!gpio_regval_init) {
+      odroid_xu_gpio_setup_all_output();
+      gpio_regval = exynos_5410_gpio_read_raw_reg(0x0C60 + EXYNOS_GPIO_DATA_REG_OFFSET);
+      /* Write a 0 to pin 27 to make sure we start in a consistent state.
+         Then we can write a 1 to begin each codelet and a 0 to end it */
+      gpio_regval &= ~(1U << 1); /* Zero out bit 1 */
+      exynos_5410_gpio_write_raw_reg(0x0C60 + EXYNOS_GPIO_DATA_REG_OFFSET, gpio_regval); /* Write out the new value */
+      gpio_regval_init = 1;
+    }
 
-  start_over:
-       for (iter = 1; iter; iter *= 2) {
-	    double tmin = 0;
-	    int first = 1;
-	    crude_time begin = X(get_crude_time)();
+    X(plan_awake)(pln, AWAKE_ZERO);
+    p->adt->zero(p);
 
-	    /* repeat the measurement TIME_REPEAT times */
-	    for (repeat = 0; repeat < TIME_REPEAT; ++repeat) {
-		 double t = measure(pln, p, iter);
-		 
-		 if (plnr->cost_hook)
-		      t = plnr->cost_hook(p, t, COST_MAX);
-		 if (t < 0)
-		      goto start_over;
+    start_over:
+      for (iter = 1; iter; iter *= 2) {
+        double tmin = 0;
+        int first = 1;
+        crude_time begin = X(get_crude_time)();
 
-		 if (first || t < tmin)
-		      tmin = t;
-		 first = 0;
+        /* repeat the measurement TIME_REPEAT times */
+        for (repeat = 0; repeat < TIME_REPEAT; ++repeat) {
+          double t = measure(pln, p, iter);
+          if (plnr->cost_hook)
+            t = plnr->cost_hook(p, t, COST_MAX);
+          if (t < 0)
+            goto start_over;
 
-		 /* do not run for too long */
-		 if (X(elapsed_since)(plnr, p, begin) > FFTW_TIME_LIMIT)
-		      break;
-	    }
+          if (first || t < tmin)
+            tmin = t;
+  		    first = 0;
 
-	    if (tmin >= TIME_MIN) {
-		 /* MRJ 20130304 Added everything except X(plan_awake) and return lines */
-		 D("%P, ", p);
-		 printer *pr = X(mkprinter_file)(stderr);
-		 pln->adt->print(pln, pr);
-		 X(printer_destroy)(pr);
-		 X(plan_awake)(pln, SLEEPY);
-		 fprintf(stderr, ", %f\n", tmin / (double)iter);
-		 return tmin / (double) iter;
-	    }
-       }
-       goto start_over; /* may happen if timer is screwed up */
+          /* do not run for too long */
+  		    if (X(elapsed_since)(plnr, p, begin) > FFTW_TIME_LIMIT)
+  		      break;
+  	    }
+
+  	    if (tmin >= TIME_MIN) {
+  		    X(plan_awake)(pln, SLEEPY);
+          /* MRJ Want to print the number of times we ran the plan (repeat) to know how to postprocess the tag/power data */
+  		    fprintf(stderr, ", %d, %f\n", repeat, tmin / (double)iter);
+          return tmin / (double) iter;
+  	    }
+      }
+      goto start_over; /* may happen if timer is screwed up */
   }
 
 #else /* no cycle counter */
