@@ -185,8 +185,10 @@ typedef crude_time ticks;
           double t = measure(pln, p, iter);
           if (plnr->cost_hook)
             t = plnr->cost_hook(p, t, COST_MAX);
-          if (t < 0)
+          if (t < 0) {
+            fprintf(stderr, ", %d, %d", repeat+1, iter);
             goto start_over;
+          }
 
           if (first || t < tmin)
             tmin = t;
@@ -197,10 +199,11 @@ typedef crude_time ticks;
   		      break;
   	    }
 
+        fprintf(stderr, ", %d, %d", repeat+1, iter);
   	    if (tmin >= TIME_MIN) {
   		    X(plan_awake)(pln, SLEEPY);
           /* MRJ Want to print the number of times we ran the plan (repeat) to know how to postprocess the tag/power data */
-  		    fprintf(stderr, ", %d, %f\n", repeat, tmin / (double)iter);
+  		    fprintf(stderr, ", %f\n", tmin / (double)iter);
           return tmin / (double) iter;
   	    }
       }
